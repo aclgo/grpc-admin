@@ -1,0 +1,44 @@
+syntax =  "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aclgo/grpc-jwt/proto-service/admin";
+
+
+message ParamsCreateAdmin{
+	string name = 1;
+	string lastname = 2;
+	string password = 3;
+	string email    = 4;
+	string role     = 5;
+}
+
+message ParamsUser  {
+	string    user_id = 1;
+    string    name = 2;
+	string    lastname = 3;
+	string    password = 4;
+	string    email = 5;
+    string    role = 6;
+	google.protobuf.Timestamp created_at = 7;
+    google.protobuf.Timestamp updated_at = 8;
+}
+
+
+message ParamsSearchRequest {
+    string query = 1;
+    string role = 2;
+    int32 page = 3;
+    int32 offset = 4;
+    int32 limit = 5;
+}
+
+message ParamsSearchResponse {
+    int64 total = 1;
+    repeated ParamsUser users = 2;
+}
+
+service AdminService {
+    rpc Register(ParamsCreateAdmin) returns (ParamsUser) {}
+    rpc Search(ParamsSearchRequest) returns (ParamsSearchResponse) {}
+}

@@ -11,16 +11,20 @@ type ParamsUser struct {
 	UserID    string    `json:"user_id" db:"user_id"`
 	Name      string    `json:"name" db:"name"`
 	Lastname  string    `json:"last_name" db:"last_name"`
-	Password  string    `json:"password"`
+	Password  string    `json:"password,omitempty"`
 	Email     string    `json:"email"`
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at,omitempty" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at,omitempty" db:"updated_at"`
 }
 
-type DataSearchUser struct {
-	Total int
-	Users []*ParamsUser
+type DataSearchedUser struct {
+	Total int           `json:"total"`
+	Users []*ParamsUser `json:"users"`
+}
+
+func (p *ParamsUser) ClearPass() {
+	p.Password = ""
 }
 
 type ParamsCreateAdmin struct {

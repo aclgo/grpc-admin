@@ -33,7 +33,7 @@ func (a *AdminService) Create(ctx context.Context, params *admin.ParamsCreateAdm
 	return created, nil
 }
 
-func (a *AdminService) SearchUsers(ctx context.Context, params *admin.ParamsSearchUsers) (*models.DataSearchUser, error) {
+func (a *AdminService) SearchUsers(ctx context.Context, params *admin.ParamsSearchUsers) (*models.DataSearchedUser, error) {
 	searched, err := a.adminRepo.Search(ctx,
 		&admin.ParamsSearchUsers{
 			Query: params.Query,

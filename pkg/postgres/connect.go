@@ -10,11 +10,11 @@ import (
 func Connect(dbDriver, dbUri string) *sqlx.DB {
 	conn, err := sqlx.Connect(dbDriver, dbUri)
 	if err != nil {
-		log.Fatalf("sqlx.Connect:%v", err)
+		log.Fatalf("sqlx.Connect: %v", err)
 	}
 
 	if err := conn.PingContext(context.Background()); err != nil {
-		log.Fatalf("sqlx.PingContext:%v", err)
+		log.Fatalf("sqlx.PingContext: %v", err)
 	}
 
 	return conn

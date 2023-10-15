@@ -10,13 +10,13 @@ import (
 
 type AdminUC interface {
 	Create(ctx context.Context, params *ParamsCreateAdmin) (*models.ParamsUser, error)
-	SearchUsers(ctx context.Context, params *ParamsSearchUsers) (*models.DataSearchUser, error)
+	SearchUsers(ctx context.Context, params *ParamsSearchUsers) (*models.DataSearchedUser, error)
 }
 
 type AdminRepo interface {
 	Create(context.Context, *models.ParamsCreateAdmin) (*models.ParamsUser, error)
 	// Find(context.Context, *models.ParamsFind) (*models.ParamsUser, error)
-	Search(context.Context, *ParamsSearchUsers) (*models.DataSearchUser, error)
+	Search(context.Context, *ParamsSearchUsers) (*models.DataSearchedUser, error)
 }
 
 type ParamsCreateAdmin struct {

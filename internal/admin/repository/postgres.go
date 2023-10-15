@@ -54,7 +54,7 @@ func (a *postgresRepo) Create(ctx context.Context, user *models.ParamsCreateAdmi
 	}
 }
 
-func (a *postgresRepo) Search(ctx context.Context, params *admin.ParamsSearchUsers) (*models.DataSearchUser, error) {
+func (a *postgresRepo) Search(ctx context.Context, params *admin.ParamsSearchUsers) (*models.DataSearchedUser, error) {
 	var (
 		args = []any{"%" + params.Query + "%"}
 		w    = []string{"name LIKE $1"}
@@ -102,6 +102,8 @@ func (a *postgresRepo) Search(ctx context.Context, params *admin.ParamsSearchUse
 			return nil, errors.Wrap(err, "Search.StructScan")
 		}
 
+		item.ClearPass()
+
 		items = append(items, &item)
 	}
 
@@ -113,5 +115,5 @@ func (a *postgresRepo) Search(ctx context.Context, params *admin.ParamsSearchUse
 		return nil, errors.Wrap(err, "Search.Close")
 	}
 
-	return &models.DataSearchUser{Total: total, Users: items}, nil
+	return &models.DataSearchedUser{Total: total, Users: items}, nil
 }
