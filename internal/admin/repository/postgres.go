@@ -17,7 +17,7 @@ var (
 	sqlCreate = `INSERT INTO users (user_id, name, last_name, password, email,
 		role, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
 		RETURNING user_id, name, last_name, password, email, role, created_at, updated_at`
-	sqlDelete = ``
+	sqlDelete = `DROP * FROM users where user_id=$1`
 )
 
 type postgresRepo struct {
@@ -54,9 +54,9 @@ func (a *postgresRepo) Create(ctx context.Context, user *models.ParamsCreateAdmi
 	}
 }
 
-func (a *postgresRepo) Search(ctx context.Context, params *admin.SearchParams) (*models.DataSearchUser, error) {
+func (a *postgresRepo) Search(ctx context.Context, params *admin.ParamsSearchUsers) (*models.DataSearchUser, error) {
 	var (
-		args = []any{"%" + params.QueryString + "%"}
+		args = []any{"%" + params.Query + "%"}
 		w    = []string{"name LIKE $1"}
 	)
 
@@ -110,7 +110,7 @@ func (a *postgresRepo) Search(ctx context.Context, params *admin.SearchParams) (
 	}
 
 	if err := rows.Close(); err != nil {
-		return nil, errors.Wrap(err, "Search.rows.Close")
+		return nil, errors.Wrap(err, "Search.Close")
 	}
 
 	return &models.DataSearchUser{Total: total, Users: items}, nil
