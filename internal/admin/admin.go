@@ -16,7 +16,7 @@ type AdminUC interface {
 type AdminRepo interface {
 	Create(context.Context, *models.ParamsCreateAdmin) (*models.ParamsUser, error)
 	// Find(context.Context, *models.ParamsFind) (*models.ParamsUser, error)
-	Search(context.Context, *SearchParams) (*models.DataSearchUser, error)
+	Search(context.Context, *ParamsSearchUsers) (*models.DataSearchUser, error)
 }
 
 type ParamsCreateAdmin struct {
@@ -28,9 +28,13 @@ type ParamsCreateAdmin struct {
 }
 
 type ParamsSearchUsers struct {
-	Query  string
-	Role   string
-	Page   int
+	Query      string
+	Role       string
+	Page       int
+	Pagination Pagination
+}
+
+type Pagination struct {
 	OffSet int
 	Limit  int
 }
@@ -73,22 +77,12 @@ func NewParamsSearchUsers(query, role, page, offset, limit string) (*ParamsSearc
 	}
 
 	return &ParamsSearchUsers{
-		Query:  query,
-		Role:   role,
-		Page:   parsedPage,
-		OffSet: parsedOffSet,
-		Limit:  parsedLimit,
+		Query: query,
+		Role:  role,
+		Page:  parsedPage,
+		Pagination: Pagination{
+			OffSet: parsedOffSet,
+			Limit:  parsedLimit,
+		},
 	}, nil
-}
-
-type SearchParams struct {
-	QueryString string
-	Role        string
-	Page        int
-	Pagination  Pagination
-}
-
-type Pagination struct {
-	OffSet int
-	Limit  int
 }
