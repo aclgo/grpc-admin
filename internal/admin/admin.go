@@ -6,6 +6,8 @@ import (
 
 	"github.com/aclgo/grpc-admin/internal/models"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type AdminUC interface {
@@ -18,6 +20,20 @@ type AdminRepo interface {
 	// Find(context.Context, *models.ParamsFind) (*models.ParamsUser, error)
 	Search(context.Context, *ParamsSearchUsers) (*models.DataSearchedUser, error)
 }
+
+type Observability struct {
+	Meter metric.Meter
+	Trace trace.Tracer
+}
+
+var (
+	ErrUserNotExist      = errors.New("user no exist")
+	ErrEmailCadastred    = errors.New("email cadastred")
+	ErrNoSearchUsers     = errors.New("no search users")
+	ErrInvalidPageSearch = errors.New("invalid page")
+	ErrInvalidLimit      = errors.New("invalid limit")
+	ErrInvalidOffset     = errors.New("invalid offset")
+)
 
 type ParamsCreateAdmin struct {
 	Name     string `json:"name"`

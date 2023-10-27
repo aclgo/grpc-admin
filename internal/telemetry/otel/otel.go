@@ -2,46 +2,71 @@ package tel
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"time"
 
+	"github.com/aclgo/grpc-admin/config"
+	"github.com/aclgo/grpc-admin/pkg/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/exporters/zipkin"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Otel struct {
 	svcName        string
 	svcVersion     string
+	logger         logger.Logger
+	config         *config.Config
 	TracerProvider trace.TracerProvider
 	MeterProvider  metric.MeterProvider
 	propagator     propagation.TextMapPropagator
 	FnShutdowns    []func(context.Context) error
 }
 
-func NewOtel(svcName, svcVersion string) (*Otel, error) {
+func NewOtel(cfg *config.Config, logger logger.Logger, svcName, svcVersion string) (*Otel, error) {
 	t := Otel{
 		svcName:    svcName,
 		svcVersion: svcVersion,
+		logger:     logger,
+		config:     cfg,
 	}
 
-	err := t.Setup()
+	t.propagator = propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	)
+
+	res, err := resource.New(
+		context.Background(),
+		resource.WithAttributes(
+			[]attribute.KeyValue{
+				semconv.ServiceName(t.svcName),
+				semconv.ServiceVersion(t.svcVersion),
+			}...,
+		),
+	)
+
 	if err != nil {
-		return nil, fmt.Errorf("otel.Setup: %v", err)
+		return nil, fmt.Errorf("resource.Merge: %v", err)
+	}
+
+	if err := t.initTracer(res); err != nil {
+		return nil, err
+	}
+
+	if err := t.initMeter(res); err != nil {
+		return nil, err
 	}
 
 	otel.SetMeterProvider(t.MeterProvider)
@@ -51,85 +76,62 @@ func NewOtel(svcName, svcVersion string) (*Otel, error) {
 	return &t, err
 }
 
-func (o *Otel) Setup() error {
-
-	var (
-		tr sdktrace.SpanExporter
-		mt sdkmetric.Exporter
-	)
-
-	o.propagator = propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	)
-
-	res, err := resource.New(
-		context.Background(),
-		resource.WithAttributes(
-			[]attribute.KeyValue{
-				semconv.ServiceName(o.svcName),
-				semconv.ServiceVersion(o.svcVersion),
-			}...,
-		),
+func (o *Otel) initTracer(res *resource.Resource) error {
+	exporter, err := zipkin.New(
+		o.config.Observability.ZipkinURL,
 	)
 
 	if err != nil {
-		return fmt.Errorf("resource.Merge: %v", err)
+		return fmt.Errorf("zipkin.New: %v", err)
 	}
 
-	switch exporter, ok := os.LookupEnv("OTEL_EXPORTER"); {
-	case exporter == "stdout":
-		tr, err = stdouttrace.New()
-		if err != nil {
-			return fmt.Errorf("stdouttrace: %v", err)
-		}
-
-		mt, err = stdoutmetric.New(stdoutmetric.WithEncoder(json.NewEncoder(os.Stdout)))
-		if err != nil {
-			return fmt.Errorf("stdoutmetric: %v", err)
-		}
-
-	case exporter == "otlp":
-		tr, err = otlptracegrpc.New(context.Background(), otlptracegrpc.WithTLSCredentials(insecure.NewCredentials()))
-		if err != nil {
-			return fmt.Errorf("")
-		}
-
-		mt, err = otlpmetricgrpc.New(context.Background(), otlpmetricgrpc.WithTLSCredentials(insecure.NewCredentials()))
-		if err != nil {
-			return fmt.Errorf("")
-		}
-	case ok:
-		return fmt.Errorf("invalid param env variable OTEL_EXPORTER")
-	default:
-		o.TracerProvider = trace.NewNoopTracerProvider()
-		o.MeterProvider = noop.NewMeterProvider()
-
-		return nil
-	}
+	o.logger.Info("zipkin exporter init")
 
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(
 			sdktrace.AlwaysSample(),
 		),
 		sdktrace.WithResource(res),
-		sdktrace.WithBatcher(tr),
-	)
-
-	mp := sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(
-			sdkmetric.NewPeriodicReader(mt),
-		),
+		sdktrace.WithBatcher(exporter),
 	)
 
 	o.TracerProvider = tp
+
+	o.FnShutdowns = append(o.FnShutdowns, tp.Shutdown)
+
+	return nil
+}
+
+func (o *Otel) initMeter(res *resource.Resource) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+	defer cancel()
+
+	conn, err := grpc.DialContext(
+		ctx,
+		o.config.Observability.CollectorURL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
+	if err != nil {
+		return fmt.Errorf("initMeter.DialContext: %v", err)
+	}
+
+	o.logger.Info("starting connection otel collector")
+
+	mexp, err := otlpmetricgrpc.New(context.Background(), otlpmetricgrpc.WithGRPCConn(conn))
+	if err != nil {
+		return fmt.Errorf("otlpmetricgrpc.New: %v", err)
+	}
+
+	mp := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(mexp)),
+		sdkmetric.WithResource(res),
+	)
+
 	o.MeterProvider = mp
 
-	o.FnShutdowns = append(
-		o.FnShutdowns,
-		tp.Shutdown,
-		mp.Shutdown,
-	)
+	o.FnShutdowns = append(o.FnShutdowns, mp.Shutdown)
 
 	return nil
 }

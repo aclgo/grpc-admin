@@ -5,19 +5,23 @@ import (
 
 	"github.com/aclgo/grpc-admin/internal/admin"
 	"github.com/aclgo/grpc-admin/internal/models"
+	"github.com/aclgo/grpc-admin/pkg/logger"
 )
 
 type AdminService struct {
 	adminRepo admin.AdminRepo
+	logger    logger.Logger
 }
 
-func NewAdminService(adminRepo admin.AdminRepo) *AdminService {
+func NewAdminService(adminRepo admin.AdminRepo, logger logger.Logger) *AdminService {
 	return &AdminService{
 		adminRepo: adminRepo,
+		logger:    logger,
 	}
 }
 
 func (a *AdminService) Create(ctx context.Context, params *admin.ParamsCreateAdmin) (*models.ParamsUser, error) {
+
 	created, err := a.adminRepo.Create(ctx, &models.ParamsCreateAdmin{
 		Name:     params.Name,
 		Lastname: params.Lastname,

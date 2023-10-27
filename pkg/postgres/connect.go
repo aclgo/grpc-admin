@@ -5,10 +5,11 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
 func Connect(dbDriver, dbUri string) *sqlx.DB {
-	conn, err := sqlx.Connect(dbDriver, dbUri)
+	conn, err := sqlx.Open(dbDriver, dbUri)
 	if err != nil {
 		log.Fatalf("sqlx.Connect: %v", err)
 	}

@@ -19,11 +19,21 @@ func NewInterceptor(logger logger.Logger) *Interceptor {
 	}
 }
 
-func (i *Interceptor) GrpcInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+func (i *Interceptor) GrpcInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (reply any, err error) {
 	start := time.Now()
 	md, _ := metadata.FromIncomingContext(ctx)
-	reply, err := handler(ctx, req)
+	reply, err = handler(ctx, req)
 	i.logger.Infof("Method: %s, Time: %v, Metadata: %v, Err: %v", info.FullMethod, time.Since(start), md, err)
+
+	return reply, err
+}
+
+func (i *Interceptor) GrpcInterceptorMetricTime(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (reply any, err error) {
+	start := time.Now()
+	md, _ := metadata.FromIncomingContext(ctx)
+	reply, err = handler(ctx, req)
+
+	i.logger.Infof("%v - %v", start, md)
 
 	return reply, err
 }

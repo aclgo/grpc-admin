@@ -6,10 +6,19 @@ import (
 	"github.com/aclgo/grpc-admin/internal/admin"
 	"github.com/aclgo/grpc-admin/internal/models"
 	proto "github.com/aclgo/grpc-admin/proto/admin"
+	otelCodes "go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *AdminService) Register(ctx context.Context, req *proto.ParamsCreateAdmin) (*proto.ParamsUser, error) {
+	userRegisterSuccess, _ := s.observer.Meter.Float64Counter("user-register-success", metric.WithUnit("0"))
+	userRegisterError, _ := s.observer.Meter.Float64Counter("user-register-error", metric.WithUnit("0"))
+
+	ctx, span := s.observer.Trace.Start(ctx, "user-register")
+	defer span.End()
+
+	span.AddEvent("user-register")
 	result, err := s.adminUC.Create(ctx, &admin.ParamsCreateAdmin{
 		Name:     req.Name,
 		Lastname: req.Lastname,
@@ -19,8 +28,14 @@ func (s *AdminService) Register(ctx context.Context, req *proto.ParamsCreateAdmi
 	})
 
 	if err != nil {
+		userRegisterError.Add(ctx, 1)
+		span.SetStatus(otelCodes.Error, err.Error())
+		span.End()
 		return nil, err
 	}
+
+	userRegisterSuccess.Add(ctx, 1)
+	span.SetStatus(otelCodes.Ok, "new user registred")
 
 	return parseModelProto([]*models.ParamsUser{result})[0], nil
 }

@@ -1,9 +1,12 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
 
+	"github.com/aclgo/grpc-admin/config"
+	"github.com/aclgo/grpc-admin/internal/admin"
 	"github.com/aclgo/grpc-admin/internal/admin/repository"
 	"github.com/aclgo/grpc-admin/internal/admin/usecase"
 	"github.com/aclgo/grpc-admin/internal/delivery/grpc/service"
@@ -15,41 +18,61 @@ import (
 )
 
 type Server struct {
-	db     *sqlx.DB
-	logger logger.Logger
+	config        *config.Config
+	db            *sqlx.DB
+	logger        logger.Logger
+	observability *admin.Observability
 }
 
-func NewServer(db *sqlx.DB) *Server {
+func NewServer(cfg *config.Config, db *sqlx.DB, logger logger.Logger, obs *admin.Observability) *Server {
 	return &Server{
-		db: db,
+		config:        cfg,
+		db:            db,
+		logger:        logger,
+		observability: obs,
 	}
 }
 
-func (s *Server) Run(port int) error {
+func (s *Server) Run(ctx context.Context) error {
 	adminRepo := repository.NewpostgresRepo(s.db)
-	adminUC := usecase.NewAdminService(adminRepo)
+	adminUC := usecase.NewAdminService(adminRepo, s.logger)
 
-	handlers := service.NewAdminService(adminUC)
+	handlers := service.NewAdminService(adminUC, s.observability)
 
 	// ctx := context.Background()
 	interceptor := NewInterceptor(s.logger)
 
 	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(interceptor.GrpcInterceptor),
+		// grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+		// grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 	}
 
 	srv := grpc.NewServer(opts...)
 
 	proto.RegisterAdminServiceServer(srv, handlers)
 
-	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%v", s.config.ApiPort))
 	if err != nil {
 		return errors.Wrap(err, "Run.Listen")
 	}
 
-	// s.logger.Infof("server grpc running port %v", port)
-	if err := srv.Serve(listen); err != nil {
-		return errors.Wrap(err, "Run.Serve")
+	ec := make(chan error)
+
+	go func() {
+		s.logger.Infof("server starting port %v", s.config.ApiPort)
+		ec <- srv.Serve(listen)
+	}()
+
+	select {
+	case <-ec:
+		if err != nil {
+			return errors.Wrap(<-ec, "Run.Serve")
+		}
+
+	case <-ctx.Done():
+		s.logger.Info("server stop")
+		srv.GracefulStop()
 	}
 
 	return nil

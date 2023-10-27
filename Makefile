@@ -1,6 +1,7 @@
-migrate_up:
+push:
     sudo docker compose up --build -d
-    migrate -database postgres://grpc-jwt:grpc-jwt@localhost:5432/grpc-jwt?sslmode=disable -path migrate up 1
+migrate_up:
+    migrate -database postgres://grpc-admin:grpc-admin@localhost:5432/grpc-admin?sslmode=disable -path migrate up 1
 migrate_down:
     migrate -database postgres://grpc-jwt:grpc-jwt@localhost:5432/grpc-jwt?sslmode=disable -path migrate down 1
 

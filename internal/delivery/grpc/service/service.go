@@ -6,12 +6,14 @@ import (
 )
 
 type AdminService struct {
-	adminUC admin.AdminUC
+	adminUC  admin.AdminUC
+	observer *admin.Observability
 	proto.UnimplementedAdminServiceServer
 }
 
-func NewAdminService(adminUC admin.AdminUC) *AdminService {
+func NewAdminService(adminUC admin.AdminUC, observer *admin.Observability) *AdminService {
 	return &AdminService{
-		adminUC: adminUC,
+		adminUC:  adminUC,
+		observer: observer,
 	}
 }
