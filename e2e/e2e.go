@@ -1,4 +1,4 @@
-package main
+package e2e
 
 import (
 	"context"
@@ -14,9 +14,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func main() {
-
-	cfg := config.NewConfig(".")
+func Run(cfg *config.Config) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
