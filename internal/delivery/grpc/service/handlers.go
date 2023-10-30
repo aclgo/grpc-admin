@@ -41,6 +41,7 @@ func (s *AdminService) Register(ctx context.Context, req *proto.ParamsCreateAdmi
 }
 
 func (s *AdminService) Search(ctx context.Context, req *proto.ParamsSearchRequest) (*proto.ParamsSearchResponse, error) {
+
 	result, err := s.adminUC.SearchUsers(ctx,
 		&admin.ParamsSearchUsers{
 			Query: req.Query,

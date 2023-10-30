@@ -28,8 +28,8 @@ func Run(cfg *config.Config) {
 
 	e2e := Newe2eConfig(svcClient)
 
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
+	// ctx, cancel = context.WithTimeout(context.Background(), time.Second*10)
+	// defer cancel()
 
 	if err := e2e.registerUser(ctx); err != nil {
 		log.Fatalf("registerUser: %v", err)

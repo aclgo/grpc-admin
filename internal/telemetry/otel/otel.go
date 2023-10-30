@@ -71,14 +71,14 @@ func NewOtel(cfg *config.Config, logger logger.Logger, svcName, svcVersion strin
 
 	otel.SetMeterProvider(t.MeterProvider)
 	otel.SetTracerProvider(t.TracerProvider)
-	otel.SetTextMapPropagator(t.Propagator())
+	otel.SetTextMapPropagator(t.propagator)
 
 	return &t, err
 }
 
 func (o *Otel) initTracer(res *resource.Resource) error {
 	exporter, err := zipkin.New(
-		o.config.Observability.ZipkinURL,
+		o.config.Metric.ExporterURL,
 	)
 
 	if err != nil {
@@ -109,7 +109,7 @@ func (o *Otel) initMeter(res *resource.Resource) error {
 
 	conn, err := grpc.DialContext(
 		ctx,
-		o.config.Observability.CollectorURL,
+		o.config.Metric.ExporterURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
 	)
@@ -134,18 +134,6 @@ func (o *Otel) initMeter(res *resource.Resource) error {
 	o.FnShutdowns = append(o.FnShutdowns, mp.Shutdown)
 
 	return nil
-}
-
-func (o *Otel) Tracer(tracerName string, opts ...trace.TracerOption) trace.Tracer {
-	return o.TracerProvider.Tracer(tracerName, opts...)
-}
-
-func (o *Otel) Meter(meterName string, opts ...metric.MeterOption) metric.Meter {
-	return o.MeterProvider.Meter(meterName, opts...)
-}
-
-func (o *Otel) Propagator() propagation.TextMapPropagator {
-	return o.propagator
 }
 
 func (o *Otel) Shutdowns(ctx context.Context) error {

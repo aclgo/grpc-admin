@@ -5,8 +5,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/aclgo/grpc-admin/config"
+	"github.com/aclgo/grpc-admin/e2e"
 	"github.com/aclgo/grpc-admin/internal/admin"
 	"github.com/aclgo/grpc-admin/internal/server"
 	tel "github.com/aclgo/grpc-admin/internal/telemetry/otel"
@@ -26,8 +28,8 @@ func main() {
 
 	cfg := config.NewConfig(".")
 	cfg.ApiPort = "50052"
-	cfg.Observability.CollectorURL = collectorURL
-	cfg.Observability.ZipkinURL = zipkinURL
+	cfg.Metric.ExporterURL = collectorURL
+	cfg.Tracer.ExporterURL = zipkinURL
 
 	logger := logger.NewapiLogger(cfg)
 
@@ -41,8 +43,8 @@ func main() {
 		otel.Shutdowns(context.Background())
 	}()
 
-	mt := otel.Meter("grpc-jwt")
-	tr := otel.Tracer("grpc-jwt")
+	mt := otel.MeterProvider.Meter("grpc-jwt")
+	tr := otel.TracerProvider.Tracer("grpc-jwt")
 
 	db := postgres.Connect(dbDriver, dbUri)
 
@@ -50,6 +52,11 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	go func() {
+		time.Sleep(time.Second * 15)
+		e2e.Run(cfg)
+	}()
 
 	if err := server.Run(ctx); err != nil {
 		logger.Errorf("server.Run: %v", err)
