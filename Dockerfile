@@ -11,6 +11,7 @@ FROM scratch
 WORKDIR /app
 
 COPY --from=builder /app/grpc-admin ./
+COPY --from=builder /app/.env ./
 
 EXPOSE 50052
 

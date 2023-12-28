@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/aclgo/grpc-admin/config"
 	"github.com/aclgo/grpc-admin/pkg/logger"
@@ -78,7 +77,7 @@ func NewOtel(cfg *config.Config, logger logger.Logger, svcName, svcVersion strin
 
 func (o *Otel) initTracer(res *resource.Resource) error {
 	exporter, err := zipkin.New(
-		o.config.Metric.ExporterURL,
+		o.config.TracerExporterURL,
 	)
 
 	if err != nil {
@@ -104,12 +103,11 @@ func (o *Otel) initTracer(res *resource.Resource) error {
 
 func (o *Otel) initMeter(res *resource.Resource) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
-	defer cancel()
+	ctx := context.TODO()
 
 	conn, err := grpc.DialContext(
 		ctx,
-		o.config.Metric.ExporterURL,
+		o.config.MetricExporterURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
 	)
