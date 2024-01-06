@@ -1,3 +1,3 @@
 # grpc-admin
 
-- Servico para administrar sistema simples de usúarios. Criando users com privilegios, realizando açoes com cunho mais crítico.
+### - Service to manage a simple user system. Creating users with privileges, carrying out actions with a more critical nature.
