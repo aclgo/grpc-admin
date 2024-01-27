@@ -75,6 +75,7 @@ func parseModelProto(items []*models.ParamsUser) []*proto.ParamsUser {
 			Password:  user.Password,
 			Email:     user.Email,
 			Role:      user.Role,
+			Verified:  user.Verified,
 			CreatedAt: timestamppb.New(user.CreatedAt),
 			UpdatedAt: timestamppb.New(user.UpdatedAt),
 		})

@@ -10,6 +10,7 @@ CREATE TABLE users (
     email VARCHAR(64) UNIQUE NOT NULL CHECK (email <> ''),
     password VARCHAR(250) NOT NULL CHECK (octet_length(password) <> 0),
     role VARCHAR(20) DEFAULT 'client',
+    verified VARCHAR(4) DEFAULT 'no',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
